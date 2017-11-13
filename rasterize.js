@@ -672,45 +672,28 @@ function setupShaders() {
 
 
 
-function setTexture(imageSrc,render){
-    // Create a texture.
-var texture = gl.createTexture();
-newTextureArray.push(texture);
+function setTexture(model){
 
-gl.activeTexture(gl.TEXTURE0);
-gl.bindTexture(gl.TEXTURE_2D, newTextureArray[newTextureArray.length - 1]);
-
-
+gl.bindTexture(gl.TEXTURE_2D, model.textureObject);
 // Set the parameters so we can render any size image.
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); 
+gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
 
 // Fill the texture with a 1x1 blue pixel.
 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
               new Uint8Array([0, 0, 255, 255]));
  
-var image = new Image();
-image.texture = texture;
-image.crossOrigin = "Anonymous";
-image.src = "https://ncsucgclass.github.io/prog3/"+imageSrc;
-images.push(image);
 //console.log("https://ncsucgclass.github.io/prog3/"+imageSrc)
-image.onload = function(){
-console.log("image loaded ",this.src)
-  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-  console.log("this. textyre ",this.texture)
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, this.texture);
-  gl.uniform1i(textureLocation, 0);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, this);
-  imagesToLoad--;
+model.image.onload = function(){
+  --imagesToLoad;
+  model.image = this;
   if(imagesToLoad == 0)
   {
-    console.log("Rending Images ..")
-    render();
+  renderModels();
   }
  // gl.generateMipmap(gl.TEXTURE_2D);  
  
@@ -724,17 +707,36 @@ function setTextures(){
 
     imagesToLoad = numTriangleSets+numEllipsoids;
 
-    var currSet; // the tri set and its material properties
+
+   
     for (var whichTriSet=0; whichTriSet<numTriangleSets; whichTriSet++) {
-        currSet = inputTriangles[whichTriSet];
-        setTexture(currSet.material.texture,renderModels);
+        
+        inputTriangles[whichTriSet].textureObject = gl.createTexture();
+        inputTriangles[whichTriSet].textureUrl = inputTriangles[whichTriSet].material.texture;
+
+        var image = new Image();
+        image.crossOrigin = "Anonymous";
+        image.src = "https://ncsucgclass.github.io/prog3/"+inputTriangles[whichTriSet].textureUrl;
+        inputTriangles[whichTriSet].image = image;
+
+        var model = inputTriangles[whichTriSet];
+        setTexture(model);
     }
 
-       var ellipsoid; // the current ellipsoid and material
-    
+           
     for (var whichEllipsoid=0; whichEllipsoid<numEllipsoids; whichEllipsoid++) {
-        ellipsoid = inputEllipsoids[whichEllipsoid];
-        setTexture(ellipsoid.texture,renderModels);
+
+        
+        inputEllipsoids[whichEllipsoid].textureObject = gl.createTexture();
+        inputEllipsoids[whichEllipsoid].textureUrl = inputEllipsoids[whichEllipsoid].texture;
+
+        var image = new Image();
+        image.crossOrigin = "Anonymous";
+        image.src = "https://ncsucgclass.github.io/prog3/"+inputEllipsoids[whichEllipsoid].textureUrl;
+        inputEllipsoids[whichEllipsoid].image = image;
+
+        var model = inputEllipsoids[whichEllipsoid];
+        setTexture(model);
     }
 }
 
@@ -814,6 +816,10 @@ function renderModels() {
         gl.vertexAttribPointer(vNormAttribLoc,3,gl.FLOAT,false,0,0); // feed
         gl.bindBuffer(gl.ARRAY_BUFFER,textureBuffers[whichTriSet]); // activate
         gl.vertexAttribPointer(texPosArrtibLoc,2,gl.FLOAT,false,0,0); // feed
+
+        gl.bindTexture(gl.TEXTURE_2D, currSet.textureObject);
+        gl.uniform1i(textureLocation, 0);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, currSet.image);
         
         // triangle buffer: activate and render
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,triangleBuffers[whichTriSet]); // activate
@@ -846,6 +852,10 @@ function renderModels() {
         gl.vertexAttribPointer(vNormAttribLoc,3,gl.FLOAT,false,0,0); // feed normal buffer to shader
         gl.bindBuffer(gl.ARRAY_BUFFER,textureBuffers[numTriangleSets+whichEllipsoid]); // activate tri buffer
         gl.vertexAttribPointer(texPosArrtibLoc,2,gl.FLOAT,false,0,0); // feed normal buffer to shader
+        
+        gl.bindTexture(gl.TEXTURE_2D, ellipsoid.textureObject);
+        gl.uniform1i(textureLocation, 0);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, ellipsoid.image);
         
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,triangleBuffers[numTriangleSets+whichEllipsoid]); // activate tri buffer
