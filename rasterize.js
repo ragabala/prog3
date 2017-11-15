@@ -378,9 +378,9 @@ function loadModels() {
                 }); //end of ellipsoid normals                
 
            var textureVertices = [0,0];
-                for (latNum = 0; latNum <= numLongSteps * 2 ; latNum +=2) {
+                for (var latNum = 0; latNum <= numLongSteps * 2 ; latNum +=2) {
                     for (longNum = 0; longNum <= numLongSteps; longNum++)
-                        textureVertices.push(((longNum / numLongSteps)), ( (latNum / numLongSteps)));
+                        textureVertices.push((longNum / numLongSteps),(latNum / numLongSteps));
                 }
                 textureVertices.push(textureVertices[textureVertices.length-2],textureVertices[textureVertices.length-1])
 
@@ -765,7 +765,7 @@ model.image.onload = function(){
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, this);    
   if(imagesToLoad == 0)
   {
-  renderModels();
+     renderModels();
   }
  // gl.generateMipmap(gl.TEXTURE_2D);  
  }
