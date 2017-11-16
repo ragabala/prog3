@@ -573,7 +573,7 @@ function loadModels() {
 
             models.sort(function(a, b){return b.alpha-a.alpha})
 
-            console.log(JSON.stringify(models))
+           // console.log(JSON.stringify(models))
         
     } // end try 
     
@@ -902,7 +902,7 @@ function renderModels() {
 
     if(model.alpha < 1)  
     {  
-        console.log("rendering "+model.texture, " alpha : "+model.alpha)
+        //console.log("rendering "+model.texture, " alpha : "+model.alpha)
         gl.depthMask(false);
         gl.enable(gl.BLEND);
         gl.blendEquation(gl.FUNC_ADD)
