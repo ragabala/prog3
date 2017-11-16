@@ -666,14 +666,16 @@ function setupShaders() {
             // combine to output color
             vec3 colorOut = ambient + diffuse + specular; // no specular yet
           //  gl_FragColor = vec4(colorOut, 1.0) * texture2D(u_texture, vec2(v_texcoord.s,v_texcoord.t)); 
-          //  gl_FragColor = texture2D(u_texture, v_texcoord); 
+            vec4 textureColor = texture2D(u_texture, v_texcoord); 
           if(mode==0.0)
           {
-            gl_FragColor = vec4(colorOut, 1.0) * texture2D(u_texture, v_texcoord);  
+            //gl_FragColor = vec4(colorOut, 1.0) * textureColor;  
+            gl_FragColor = vec4(colorOut, 1.0) * vec4(textureColor.xyz,textureColor.a * uAlpha);  
           }
           else
           {
-            gl_FragColor =texture2D(u_texture, v_texcoord); 
+            //gl_FragColor = textureColor; 
+            gl_FragColor = vec4(textureColor.xyz,textureColor.a * uAlpha); 
           }
         }
     `;
@@ -751,34 +753,19 @@ function setupShaders() {
 } // end setup shaders
 
 
- 
-function isPowerOf2(value) {
-            return (value & (value - 1)) == 0;
-}
+
 
 function setTexture(model){
 
 gl.bindTexture(gl.TEXTURE_2D, model.textureObject);
- gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.uniform1i(textureLocation, 0);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+gl.uniform1i(textureLocation, 0);
+gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 // Set the parameters so we can render any size image.
 // Fill the texture with a 1x1 blue pixel.
 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
               new Uint8Array([0, 0, 255, 255]));
 
-if (isPowerOf2(model.image.width) && isPowerOf2(model.image.height)) {
-    gl.generateMipmap(gl.TEXTURE_2D);  
-} else {
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-   
-}
+
 model.image.src = model.textureUrl;
 //console.log("https://ncsucgclass.github.io/prog3/"+imageSrc)
 model.image.onload = function(){
@@ -831,8 +818,16 @@ function setTextures(){
     }
 }
 
+function setDepthtoDefaults(){
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); // clear frame/depth buffers
+    gl.depthMask(true);
+    gl.clearDepth(1.0); // use max when we clear the depth buffer
+}
+
 // render the loaded model
 function renderModels() {
+   
+   setDepthtoDefaults();
     
     // construct the model transform matrix, based on model state
     function makeModelTransform(currModel) {
@@ -863,7 +858,20 @@ function renderModels() {
     } // end make model transform
 
     function bindImageTexture(model){  
+
+        function isPowerOf2(value) {
+                    return (value & (value - 1)) == 0;
+        }
         gl.bindTexture(gl.TEXTURE_2D, model.textureObject);
+        if (isPowerOf2(model.image.width) && isPowerOf2(model.image.height)) {
+         gl.generateMipmap(gl.TEXTURE_2D);  
+        }
+        else {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        }
         
     } // bind textures for each model
     
@@ -890,6 +898,19 @@ function renderModels() {
 
     // this will generate the models in descending order by alpha value
     models.forEach(function(model,modelIndex){
+          gl.uniform1f(aplhaULoc,model.alpha); // pass in the alpha component
+
+    if(model.alpha < 1)  
+    {  
+        console.log("rendering "+model.texture, " alpha : "+model.alpha)
+        gl.depthMask(false);
+        gl.enable(gl.BLEND);
+        gl.blendEquation(gl.FUNC_ADD)
+        gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+      
+       
+    }
+  
 
     if(model.type == modelEnum.TRIANGLES)
     {
@@ -905,7 +926,7 @@ function renderModels() {
         gl.uniform3fv(diffuseULoc,currSet.material.diffuse); // pass in the diffuse reflectivity
         gl.uniform3fv(specularULoc,currSet.material.specular); // pass in the specular reflectivity
         gl.uniform1f(shininessULoc,currSet.material.n); // pass in the specular exponent
-        gl.uniform1f(aplhaULoc,currSet.alpha); // pass in the specular exponent
+       // gl.uniform1f(aplhaULoc,currSet.alpha); // pass in the alpha component
 
         
         // vertex buffer: activate and feed into vertex shader & Textures
@@ -934,7 +955,7 @@ function renderModels() {
         gl.uniform3fv(diffuseULoc,ellipsoid.diffuse); // pass in the diffuse reflectivity
         gl.uniform3fv(specularULoc,ellipsoid.specular); // pass in the specular reflectivity
         gl.uniform1f(shininessULoc,ellipsoid.n); // pass in the specular exponent
-        gl.uniform1f(aplhaULoc,ellipsoid.alpha); // pass in the specular exponent
+       // gl.uniform1f(aplhaULoc,ellipsoid.alpha); // pass in the specular exponent
 
         gl.bindBuffer(gl.ARRAY_BUFFER,vertexBuffers[numTriangleSets+model.index]); // activate vertex buffer
         gl.vertexAttribPointer(vPosAttribLoc,3,gl.FLOAT,false,0,0); // feed vertex buffer to shader
@@ -953,6 +974,9 @@ function renderModels() {
 
 
     }); // end for each model
+
+    
+
 } // end render model
 
 
@@ -1078,6 +1102,7 @@ function renderModels1() {
         // draw a transformed instance of the ellipsoid
         gl.drawElements(gl.TRIANGLES,triSetSizes[numTriangleSets+whichEllipsoid],gl.UNSIGNED_SHORT,0); // render
     } // end for each ellipsoid
+
 } // end render model
 
 
