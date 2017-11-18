@@ -300,27 +300,27 @@ function setDistanceFromEye(model)
 function sortModelsByDepth(){
 
 //console.log("sorting model by depth")
-models.forEach(function(model){setDistanceFromEye(model)
-//console.log(model.name+" "+model.distance)
+models.forEach(function(model){
+    setDistanceFromEye(model)
+//console.log(model.name+" "+model.alpha+" "+model.distance)
 
 });
 models.sort(function(model1,model2)
  {
-
+     if(model1.alpha == 1 &&  model2.alpha == 1)
+        return model2.distance - model1.distance
     //we need to ensure that models with alpha 1 needs to stay in the front of models
     if(model1.alpha == 1)
         return -1;
+    if(model2.alpha == 1)
+        return 1;
     // sort in descending order of Depth
-    return model2.distance - model1.distance;
+    return model2.distance - model1.distance
+
 
   });
 
-//console.log("after sorting")
-
 writeDepthValues();
-
-//console.log(JSON.stringify(models,null,2))
-
 
 }
 
@@ -624,7 +624,7 @@ function loadModels() {
                 viewDelta = vec3.length(vec3.subtract(temp,maxCorner,minCorner)) / 100; // set global
             } // end if ellipsoid file loaded
 
-            models.sort(function(a, b){return b.alpha-a.alpha})
+            
 
            // console.log(JSON.stringify(models))
         
@@ -633,6 +633,7 @@ function loadModels() {
     catch(e) {
         console.log(e);
     } // end catch
+    sortModelsByDepth();
 } // end load models
 
 // setup the webGL shaders
@@ -1044,7 +1045,6 @@ function main() {
   
   setupWebGL(); // set up the webGL environment
   loadModels(); // load in the models from tri file
-  writeDepthValues();
   setupShaders(); // setup the webGL shaders
   setTextures();
   renderModels(); // draw the triangles using webGL
