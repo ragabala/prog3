@@ -1,8 +1,6 @@
 /* GLOBAL CONSTANTS AND VARIABLES */
 
 /* assignment specific globals */
-
-/*trying to go with the triangles route*/
 const INPUT_TRIANGLES_URL = "https://ncsucgclass.github.io/prog3/triangles.json"; // triangles file loc
 const INPUT_ELLIPSOIDS_URL = "https://ncsucgclass.github.io/prog3/ellipsoids.json"; // ellipsoids file loc
 var defaultEye = vec3.fromValues(0.5,0.5,-0.5); // default eye position in world space
@@ -259,7 +257,7 @@ function handleKeyDown(event) {
             toggleFlag()
             break;
         case "KeyB": // translate down, rotate clockwise with shift
-            mode.value = (mode.value+1)%3
+            mode.value = (mode.value == 0.0)?1.0:0.0;
             gl.uniform1f(mode.location,mode.value);
             toggleFlag()
            break;
@@ -723,22 +721,15 @@ function setupShaders() {
             vec3 colorOut = ambient + diffuse + specular; // no specular yet
           //  gl_FragColor = vec4(colorOut, 1.0) * texture2D(u_texture, vec2(v_texcoord.s,v_texcoord.t)); 
             vec4 textureColor = texture2D(u_texture, v_texcoord); 
-          if(mode==1.0)
+          if(mode==0.0)
           {
-              gl_FragColor = vec4(textureColor.xyz,textureColor.a * uAlpha); 
             //gl_FragColor = vec4(colorOut, 1.0) * textureColor;  
-            
-          }
-          else if(mode==2.0)
-          {
-             gl_FragColor = vec4(colorOut, 1.0) * vec4(textureColor.xyz,textureColor.a * uAlpha); 
-            //gl_FragColor = vec4(colorOut, 1.0) * textureColor;  
-            
+            gl_FragColor = vec4(colorOut, 1.0) * vec4(textureColor.xyz,textureColor.a * uAlpha);  
           }
           else
           {
             //gl_FragColor = textureColor; 
-             gl_FragColor = vec4(colorOut, uAlpha) + vec4(textureColor.xyz,textureColor.a * uAlpha); 
+            gl_FragColor = vec4(textureColor.xyz,textureColor.a * uAlpha); 
           }
         }
     `;
