@@ -1,17 +1,38 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Prog 3: Rasterization Shell</title>
-    
-    <link type="text/css" rel="stylesheet" href="rasterize.css">
+<head>
+<meta charset="UTF-8">
+<title>Prog 3: Rasterization Shell</title>
 
-    <script type="text/javascript" src="gl-matrix.js"></script>
-    <script type="text/javascript" src="rasterize.js"></script>
-  </head>
+<link type="text/css" rel="stylesheet" href="rasterize.css">
 
-  <body onload="main();">
-    <canvas id="myImageCanvas" width="512" height="512"></canvas>
-    <canvas id="myWebGLCanvas" width="512" height="512"></canvas>
-  </body>
+<script type="text/javascript" src="gl-matrix.js"></script>
+<script type="text/javascript" src="rasterize.js"></script>
+</head>
+
+<body onload="main();">
+
+<canvas id="myImageCanvas" width="512" height="512"></canvas>
+<canvas id="myWebGLCanvas" width="512" height="512"></canvas>
+<table id="depthValues"  style="display:block;height:30px">
+  <tr><th>Rendering Order</th></td>
+  <tr><td>
+<input type="textbox" id="box1">
+</td></tr>
+  <tr><td>
+<input type="textbox" id="box2">
+</td></tr>
+  <tr><td>
+<input type="textbox" id="box3">
+</td></tr>
+  <tr><td>
+<input type="textbox" id="box4">
+</td></tr>
+  <tr><td>
+<input type="textbox" id="box5">
+</td></tr>
+
+</table>
+
+</body>
 </html>
