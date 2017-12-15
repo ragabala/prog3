@@ -728,27 +728,47 @@ function setupShaders() {
 } // end setup shaders
 
 
+ 
+function isPowerOf2(value) {
+            return (value & (value - 1)) == 0;
+}
 
 function setTexture(model){
 
 gl.bindTexture(gl.TEXTURE_2D, model.textureObject);
+ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.uniform1i(textureLocation, 0);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 // Set the parameters so we can render any size image.
 // Fill the texture with a 1x1 blue pixel.
 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
               new Uint8Array([0, 0, 255, 255]));
- 
+
+if (isPowerOf2(model.image.width) && isPowerOf2(model.image.height)) {
+    gl.generateMipmap(gl.TEXTURE_2D);  
+} else {
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+   
+}
+model.image.src = model.textureUrl;
 //console.log("https://ncsucgclass.github.io/prog3/"+imageSrc)
 model.image.onload = function(){
   --imagesToLoad;
   model.image = this;
+  gl.bindTexture(gl.TEXTURE_2D, model.textureObject);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, this);    
   if(imagesToLoad == 0)
   {
   renderModels();
   }
  // gl.generateMipmap(gl.TEXTURE_2D);  
  }
-
- model.image.src = model.textureUrl;
 
 }
 
@@ -819,26 +839,9 @@ function renderModels() {
         
     } // end make model transform
 
-    function bindImageTexture(model){
-
-        function isPowerOf2(value) {
-            return (value & (value - 1)) == 0;
-        }
+    function bindImageTexture(model){  
         gl.bindTexture(gl.TEXTURE_2D, model.textureObject);
-        gl.uniform1i(textureLocation, 0);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, model.image);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-
-        if (isPowerOf2(model.image.width) && isPowerOf2(model.image.height)) {
-         gl.generateMipmap(gl.TEXTURE_2D);
-        } else {
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        }
-       
-    
+        
     } // bind textures for each model
     
     // var hMatrix = mat4.create(); // handedness matrix
