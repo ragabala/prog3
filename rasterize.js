@@ -34,6 +34,8 @@ var ambientULoc; // where to put ambient reflecivity for fragment shader
 var diffuseULoc; // where to put diffuse reflecivity for fragment shader
 var specularULoc; // where to put specular reflecivity for fragment shader
 var shininessULoc; // where to put specular exponent for fragment shader
+var mode = {}; //changing how to render texture lightning
+
 var images =[]; 
 var textureLocation;
 var imagesToLoad;
@@ -120,6 +122,9 @@ function handleKeyDown(event) {
     handleKeyDown.whichOn = handleKeyDown.whichOn == undefined ? -1 : handleKeyDown.whichOn; // nothing selected initially
     handleKeyDown.modelOn = handleKeyDown.modelOn == undefined ? null : handleKeyDown.modelOn; // nothing selected initially
 
+    var flagEventTriggered = false
+    function toggleFlag(){flagEventTriggered = true}
+
     switch (event.code) {
         
         // model selection
@@ -128,18 +133,23 @@ function handleKeyDown(event) {
                 handleKeyDown.modelOn.on = false; // turn off highlighted model
             handleKeyDown.modelOn = null; // no highlighted model
             handleKeyDown.whichOn = -1; // nothing highlighted
+            toggleFlag()
             break;
         case "ArrowRight": // select next triangle set
             highlightModel(modelEnum.TRIANGLES,(handleKeyDown.whichOn+1) % numTriangleSets);
+            toggleFlag()
             break;
         case "ArrowLeft": // select previous triangle set
             highlightModel(modelEnum.TRIANGLES,(handleKeyDown.whichOn > 0) ? handleKeyDown.whichOn-1 : numTriangleSets-1);
+            toggleFlag()
             break;
         case "ArrowUp": // select next ellipsoid
             highlightModel(modelEnum.ELLIPSOID,(handleKeyDown.whichOn+1) % numEllipsoids);
+            toggleFlag()
             break;
         case "ArrowDown": // select previous ellipsoid
             highlightModel(modelEnum.ELLIPSOID,(handleKeyDown.whichOn > 0) ? handleKeyDown.whichOn-1 : numEllipsoids-1);
+            toggleFlag()
             break;
             
         // view change
@@ -147,11 +157,13 @@ function handleKeyDown(event) {
             Center = vec3.add(Center,Center,vec3.scale(temp,viewRight,viewDelta));
             if (!event.getModifierState("Shift"))
                 Eye = vec3.add(Eye,Eye,vec3.scale(temp,viewRight,viewDelta));
+            toggleFlag()
             break;
         case "KeyD": // translate view right, rotate right with shift
             Center = vec3.add(Center,Center,vec3.scale(temp,viewRight,-viewDelta));
             if (!event.getModifierState("Shift"))
                 Eye = vec3.add(Eye,Eye,vec3.scale(temp,viewRight,-viewDelta));
+            toggleFlag()
             break;
         case "KeyS": // translate view backward, rotate up with shift
             if (event.getModifierState("Shift")) {
@@ -161,6 +173,7 @@ function handleKeyDown(event) {
                 Eye = vec3.add(Eye,Eye,vec3.scale(temp,lookAt,-viewDelta));
                 Center = vec3.add(Center,Center,vec3.scale(temp,lookAt,-viewDelta));
             } // end if shift not pressed
+            toggleFlag()
             break;
         case "KeyW": // translate view forward, rotate down with shift
             if (event.getModifierState("Shift")) {
@@ -170,6 +183,7 @@ function handleKeyDown(event) {
                 Eye = vec3.add(Eye,Eye,vec3.scale(temp,lookAt,viewDelta));
                 Center = vec3.add(Center,Center,vec3.scale(temp,lookAt,viewDelta));
             } // end if shift not pressed
+            toggleFlag()
             break;
         case "KeyQ": // translate view up, rotate counterclockwise with shift
             if (event.getModifierState("Shift"))
@@ -178,6 +192,7 @@ function handleKeyDown(event) {
                 Eye = vec3.add(Eye,Eye,vec3.scale(temp,Up,viewDelta));
                 Center = vec3.add(Center,Center,vec3.scale(temp,Up,viewDelta));
             } // end if shift not pressed
+            toggleFlag()
             break;
         case "KeyE": // translate view down, rotate clockwise with shift
             if (event.getModifierState("Shift"))
@@ -186,11 +201,13 @@ function handleKeyDown(event) {
                 Eye = vec3.add(Eye,Eye,vec3.scale(temp,Up,-viewDelta));
                 Center = vec3.add(Center,Center,vec3.scale(temp,Up,-viewDelta));
             } // end if shift not pressed
+            toggleFlag()
             break;
         case "Escape": // reset view to default
             Eye = vec3.copy(Eye,defaultEye);
             Center = vec3.copy(Center,defaultCenter);
             Up = vec3.copy(Up,defaultUp);
+            toggleFlag()
             break;
             
         // model transformation
@@ -199,37 +216,50 @@ function handleKeyDown(event) {
                 rotateModel(Up,dirEnum.NEGATIVE);
             else
                 translateModel(vec3.scale(temp,viewRight,viewDelta));
+            toggleFlag()
             break;
         case "Semicolon": // translate right, rotate right with shift
             if (event.getModifierState("Shift"))
                 rotateModel(Up,dirEnum.POSITIVE);
             else
                 translateModel(vec3.scale(temp,viewRight,-viewDelta));
+            toggleFlag()
             break;
         case "KeyL": // translate backward, rotate up with shift
             if (event.getModifierState("Shift"))
                 rotateModel(viewRight,dirEnum.POSITIVE);
             else
                 translateModel(vec3.scale(temp,lookAt,-viewDelta));
+            toggleFlag()
             break;
         case "KeyO": // translate forward, rotate down with shift
             if (event.getModifierState("Shift"))
                 rotateModel(viewRight,dirEnum.NEGATIVE);
             else
                 translateModel(vec3.scale(temp,lookAt,viewDelta));
+            toggleFlag()
             break;
         case "KeyI": // translate up, rotate counterclockwise with shift 
             if (event.getModifierState("Shift"))
                 rotateModel(lookAt,dirEnum.POSITIVE);
             else
                 translateModel(vec3.scale(temp,Up,viewDelta));
+            toggleFlag()
             break;
         case "KeyP": // translate down, rotate clockwise with shift
             if (event.getModifierState("Shift"))
                 rotateModel(lookAt,dirEnum.NEGATIVE);
             else
                 translateModel(vec3.scale(temp,Up,-viewDelta));
+            toggleFlag()
             break;
+        case "KeyB": // translate down, rotate clockwise with shift
+            mode.value = (mode.value == 0.0)?1.0:0.0;
+            gl.uniform1f(mode.location,mode.value);
+            toggleFlag()
+           break;
+
+
         case "Backspace": // reset model transforms to default
             for (var whichTriSet=0; whichTriSet<numTriangleSets; whichTriSet++) {
                 vec3.set(inputTriangles[whichTriSet].translation,0,0,0);
@@ -241,10 +271,12 @@ function handleKeyDown(event) {
                 vec3.set(inputEllipsoids[whichTriSet].xAxis,1,0,0);
                 vec3.set(inputEllipsoids[whichTriSet].yAxis,0,1,0);
             } // end for all ellipsoids
+            toggleFlag()
             break;
 
           
     } // end switch
+    if(flagEventTriggered)
       renderModels();
 } // end handleKeyDown
 
@@ -300,29 +332,26 @@ function loadModels() {
             else { // good number longitude steps
                 // make vertices
                 var ellipsoidVerticesOrig = [0,-1,0]; // vertices to return, init to south pole
-                var textureVertices = [0.5,0]; // vertex to point to south pole
-
                 var angleIncr = (Math.PI+Math.PI) / numLongSteps; // angular increment 
                 var latLimitAngle = angleIncr * (Math.floor(numLongSteps/4)-1); // start/end lat angle
                 var latRadius, latY; // radius and Y at current latitude
-                for (var latAngle=-latLimitAngle,latIndex = 0; latAngle<=latLimitAngle; latAngle+=angleIncr, latIndex++) {
+                var textureVertices = [0,0];
+               // console.log("lat limit angle",latLimitAngle)
+                 //  console.log("lat  angle",angleIncr)
+                for (var latAngle=-latLimitAngle; latAngle<=latLimitAngle; latAngle+=angleIncr) {
                     latRadius = Math.cos(latAngle); // radius of current latitude
-                    latY = Math.sin(latAngle); // height at current latitude
-                    for (var longAngle=0,longIndex = 0; longAngle<2*Math.PI; longAngle+=angleIncr,longIndex++) // for each long
+                    latY = Math.sin(latAngle); // height at current latitude                     
+                     for (var longAngle=0; longAngle<2*Math.PI+angleIncr; longAngle+=angleIncr) // for each long
                     {
                         ellipsoidVerticesOrig.push(latRadius*Math.sin(longAngle),latY,latRadius*Math.cos(longAngle));
-                        var u = 1 - (longIndex / numLongSteps);
-                        var v = 1 - (latIndex / numLongSteps);
-                        textureVertices.push(u,v);
 
                     }
+
                 } // end for each latitude
 
-
+                ellipsoidVerticesOrig.push(0,1,0);// add north pole
 
                 var ellipsoidVertices = ellipsoidVerticesOrig.slice();
-                ellipsoidVertices.push(0,1,0); // add north pole
-                textureVertices.push(0.5,1); // north pole vertex 
                 ellipsoidVertices = ellipsoidVertices.map(function(val,idx) { // position and scale ellipsoid
                     switch (idx % 3) {
                         case 0: // x
@@ -332,8 +361,7 @@ function loadModels() {
                         case 2: // z
                             return(val*currEllipsoid.c+currEllipsoid.z);
                     } // end switch
-                }); 
-
+                }); //end of ellipsoid vertices
 
                 // make normals using the ellipsoid gradient equation
                 // resulting normals are unnormalized: we rely on shaders to normalize
@@ -347,20 +375,30 @@ function loadModels() {
                         case 2: // z
                             return(2/(currEllipsoid.c*currEllipsoid.c) * (val-currEllipsoid.z));
                     } // end switch
-                }); 
-                
-                // total number of vertices and textures
-                console.log("no of ellipsoid vertices ",ellipsoidVertices.length)
-                console.log("no of ellipsoig textures ",textureVertices.length)
-                console.log("no of normals ",ellipsoidNormals.length)
-                console.log(" vertices to tex count -- * 2 /3 --:",ellipsoidVertices.length * 2/3)
+                }); //end of ellipsoid normals                
+
+           var textureVertices = [0,0];
+                for (latNum = 0; latNum <= numLongSteps * 2 ; latNum +=2) {
+                    for (longNum = 0; longNum <= numLongSteps; longNum++)
+                        textureVertices.push(((longNum / numLongSteps)), ( (latNum / numLongSteps)));
+                }
+                textureVertices.push(textureVertices[textureVertices.length-2],textureVertices[textureVertices.length-1])
+
+               // console.log(textureVertices)
+/*
+                   console.log("ellipsoidVertices.length " ,ellipsoidVertices.length) 
+                   console.log("texVertices.length " ,textureVertices.length) 
+                   console.log("ellipsoid to tex " ,ellipsoidVertices.length * 2 /3) 
+*/
 
 
                 // make triangles, from south pole to middle latitudes to north pole
                 var ellipsoidTriangles = []; // triangles to return
                 for (var whichLong=1; whichLong<numLongSteps; whichLong++) // south pole
                     ellipsoidTriangles.push(0,whichLong,whichLong+1);
+
                 ellipsoidTriangles.push(0,numLongSteps,1); // longitude wrap tri
+
                 var llVertex; // lower left vertex in the current quad
                 for (var whichLat=0; whichLat<(numLongSteps/2 - 2); whichLat++) { // middle lats
                     for (var whichLong=0; whichLong<numLongSteps-1; whichLong++) {
@@ -370,12 +408,19 @@ function loadModels() {
                     } // end for each longitude
                     ellipsoidTriangles.push(llVertex+1,llVertex+numLongSteps+1,llVertex+2);
                     ellipsoidTriangles.push(llVertex+1,llVertex+2,llVertex-numLongSteps+2);
-                } // end for each latitude
+                } // end for each latitude // for loop
+
                 for (var whichLong=llVertex+2; whichLong<llVertex+numLongSteps+1; whichLong++) // north pole
                     ellipsoidTriangles.push(whichLong,ellipsoidVertices.length/3-1,whichLong+1);
+
                 ellipsoidTriangles.push(ellipsoidVertices.length/3-2,ellipsoidVertices.length/3-1,
                                         ellipsoidVertices.length/3-numLongSteps-1); // longitude wrap
-            } // end if good number longitude steps
+            } // end if good number longitude steps // else condition
+
+
+
+
+
             return({vertices:ellipsoidVertices, normals:ellipsoidNormals, triangles:ellipsoidTriangles, uvs : textureVertices});
         } // end try
         
@@ -428,7 +473,7 @@ function loadModels() {
                     vec3.min(minCorner,minCorner,vtxToAdd); // update world bounding box corner minima
                     vec3.add(inputTriangles[whichSet].center,inputTriangles[whichSet].center,vtxToAdd); // add to ctr sum
                 } // end for vertices in set
-                console.log("UVS : ", inputTriangles[whichSet].glUvs)
+              //  console.log("UVS : ", inputTriangles[whichSet].glUvs)
                 vec3.scale(inputTriangles[whichSet].center,inputTriangles[whichSet].center,1/numVerts); // avg ctr sum
 
                 // send the vertex coords and normals to webGL
@@ -441,7 +486,7 @@ function loadModels() {
                 textureBuffers[whichSet] = gl.createBuffer(); // init empty webgl set Texture component buffer
                 gl.bindBuffer(gl.ARRAY_BUFFER,textureBuffers[whichSet]); // activate that buffer
                 gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(inputTriangles[whichSet].glUvs),gl.STATIC_DRAW); // data in
-                console.log("triangle UVs : ",inputTriangles[whichSet].glUvs)
+              //  console.log("triangle UVs : ",inputTriangles[whichSet].glUvs)
                 // set up the triangle index array, adjusting indices across sets
                 inputTriangles[whichSet].glTriangles = []; // flat index list for webgl
                 triSetSizes[whichSet] = inputTriangles[whichSet].triangles.length; // number of tris in this set
@@ -496,7 +541,7 @@ function loadModels() {
                     textureBuffers.push(gl.createBuffer()); // init empty webgl ellipsoid vertex coord buffer
                     gl.bindBuffer(gl.ARRAY_BUFFER,textureBuffers[textureBuffers.length-1]); // activate that buffer
                     gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(ellipsoidModel.uvs),gl.STATIC_DRAW); // data in
-                    console.log("ellipsoid UVs : ",ellipsoidModel.uvs)
+                   // console.log("ellipsoid UVs : ",ellipsoidModel.uvs)
 
 
                     triSetSizes.push(ellipsoidModel.triangles.length);
@@ -574,6 +619,8 @@ function setupShaders() {
         // Passed in from the vertex shader.
         varying vec2 v_texcoord;
 
+        uniform float mode;
+
         // The texture.
         uniform sampler2D u_texture;
             
@@ -596,9 +643,16 @@ function setupShaders() {
             
             // combine to output color
             vec3 colorOut = ambient + diffuse + specular; // no specular yet
-           // gl_FragColor = vec4(colorOut, 1.0); 
+          //  gl_FragColor = vec4(colorOut, 1.0) * texture2D(u_texture, vec2(v_texcoord.s,v_texcoord.t)); 
           //  gl_FragColor = texture2D(u_texture, v_texcoord); 
-            gl_FragColor = texture2D(u_texture, vec2(v_texcoord.s,v_texcoord.t)); 
+          if(mode==0.0)
+          {
+            gl_FragColor = vec4(colorOut, 1.0) * texture2D(u_texture, v_texcoord);  
+          }
+          else
+          {
+            gl_FragColor =texture2D(u_texture, v_texcoord); 
+          }
         }
     `;
     
@@ -654,6 +708,8 @@ function setupShaders() {
                 diffuseULoc = gl.getUniformLocation(shaderProgram, "uDiffuse"); // ptr to diffuse
                 specularULoc = gl.getUniformLocation(shaderProgram, "uSpecular"); // ptr to specular
                 shininessULoc = gl.getUniformLocation(shaderProgram, "uShininess"); // ptr to shininess
+                mode.location = gl.getUniformLocation(shaderProgram, "mode");
+                mode.value = 1.0;
                 
                 // pass global constants into fragment uniforms
                 gl.uniform3fv(eyePositionULoc,Eye); // pass in the eye's position
@@ -661,6 +717,7 @@ function setupShaders() {
                 gl.uniform3fv(lightDiffuseULoc,lightDiffuse); // pass in the light's diffuse emission
                 gl.uniform3fv(lightSpecularULoc,lightSpecular); // pass in the light's specular emission
                 gl.uniform3fv(lightPositionULoc,lightPosition); // pass in the light's position
+                gl.uniform1f(mode.location,mode.value);
             } // end if no shader program link errors
         } // end if no compile errors
     } // end try 
@@ -676,13 +733,6 @@ function setTexture(model){
 
 gl.bindTexture(gl.TEXTURE_2D, model.textureObject);
 // Set the parameters so we can render any size image.
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); 
-gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-
-
 // Fill the texture with a 1x1 blue pixel.
 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
               new Uint8Array([0, 0, 255, 255]));
@@ -696,9 +746,9 @@ model.image.onload = function(){
   renderModels();
   }
  // gl.generateMipmap(gl.TEXTURE_2D);  
- 
+ }
 
-}
+ model.image.src = model.textureUrl;
 
 }
 
@@ -712,11 +762,10 @@ function setTextures(){
     for (var whichTriSet=0; whichTriSet<numTriangleSets; whichTriSet++) {
         
         inputTriangles[whichTriSet].textureObject = gl.createTexture();
-        inputTriangles[whichTriSet].textureUrl = inputTriangles[whichTriSet].material.texture;
+        inputTriangles[whichTriSet].textureUrl = "https://ncsucgclass.github.io/prog3/"+inputTriangles[whichTriSet].material.texture;
 
         var image = new Image();
         image.crossOrigin = "Anonymous";
-        image.src = "https://ncsucgclass.github.io/prog3/"+inputTriangles[whichTriSet].textureUrl;
         inputTriangles[whichTriSet].image = image;
 
         var model = inputTriangles[whichTriSet];
@@ -728,11 +777,10 @@ function setTextures(){
 
         
         inputEllipsoids[whichEllipsoid].textureObject = gl.createTexture();
-        inputEllipsoids[whichEllipsoid].textureUrl = inputEllipsoids[whichEllipsoid].texture;
+        inputEllipsoids[whichEllipsoid].textureUrl = "https://ncsucgclass.github.io/prog3/"+inputEllipsoids[whichEllipsoid].texture;
 
         var image = new Image();
         image.crossOrigin = "Anonymous";
-        image.src = "https://ncsucgclass.github.io/prog3/"+inputEllipsoids[whichEllipsoid].textureUrl;
         inputEllipsoids[whichEllipsoid].image = image;
 
         var model = inputEllipsoids[whichEllipsoid];
@@ -770,6 +818,28 @@ function renderModels() {
         mat4.multiply(mMatrix,mat4.fromTranslation(temp,currModel.translation),mMatrix); // T(pos)*T(ctr)*R(ax)*S(1.2)*T(-ctr)
         
     } // end make model transform
+
+    function bindImageTexture(model){
+
+        function isPowerOf2(value) {
+            return (value & (value - 1)) == 0;
+        }
+        gl.bindTexture(gl.TEXTURE_2D, model.textureObject);
+        gl.uniform1i(textureLocation, 0);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, model.image);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
+        if (isPowerOf2(model.image.width) && isPowerOf2(model.image.height)) {
+         gl.generateMipmap(gl.TEXTURE_2D);
+        } else {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        }
+       
+    
+    } // bind textures for each model
     
     // var hMatrix = mat4.create(); // handedness matrix
     var pMatrix = mat4.create(); // projection matrix
@@ -816,11 +886,7 @@ function renderModels() {
         gl.vertexAttribPointer(vNormAttribLoc,3,gl.FLOAT,false,0,0); // feed
         gl.bindBuffer(gl.ARRAY_BUFFER,textureBuffers[whichTriSet]); // activate
         gl.vertexAttribPointer(texPosArrtibLoc,2,gl.FLOAT,false,0,0); // feed
-
-        gl.bindTexture(gl.TEXTURE_2D, currSet.textureObject);
-        gl.uniform1i(textureLocation, 0);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, currSet.image);
-        
+        bindImageTexture(currSet); // setting the textures 
         // triangle buffer: activate and render
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,triangleBuffers[whichTriSet]); // activate
         gl.drawElements(gl.TRIANGLES,3*triSetSizes[whichTriSet],gl.UNSIGNED_SHORT,0); // render
@@ -831,9 +897,7 @@ function renderModels() {
     var ellipsoid, instanceTransform = mat4.create(); // the current ellipsoid and material
     
     for (var whichEllipsoid=0; whichEllipsoid<numEllipsoids; whichEllipsoid++) {
-        ellipsoid = inputEllipsoids[whichEllipsoid];
-        
-        
+        ellipsoid = inputEllipsoids[whichEllipsoid];     
         // define model transform, premult with pvmMatrix, feed to vertex shader
         makeModelTransform(ellipsoid);
         pvmMatrix = mat4.multiply(pvmMatrix,pvMatrix,mMatrix); // premultiply with pv matrix
@@ -852,11 +916,7 @@ function renderModels() {
         gl.vertexAttribPointer(vNormAttribLoc,3,gl.FLOAT,false,0,0); // feed normal buffer to shader
         gl.bindBuffer(gl.ARRAY_BUFFER,textureBuffers[numTriangleSets+whichEllipsoid]); // activate tri buffer
         gl.vertexAttribPointer(texPosArrtibLoc,2,gl.FLOAT,false,0,0); // feed normal buffer to shader
-        
-        gl.bindTexture(gl.TEXTURE_2D, ellipsoid.textureObject);
-        gl.uniform1i(textureLocation, 0);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, ellipsoid.image);
-        
+        bindImageTexture(ellipsoid);// setting the textures         loadmo
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,triangleBuffers[numTriangleSets+whichEllipsoid]); // activate tri buffer
         // draw a transformed instance of the ellipsoid
@@ -866,6 +926,9 @@ function renderModels() {
 
 
 /* MAIN -- HERE is where execution begins after window load */
+
+
+
 
 function main() {
   
